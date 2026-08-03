@@ -10,15 +10,15 @@ import (
 	"github.com/simon/malaikat/internal/config"
 )
 
-// Install describes a local llama.cpp Vulkan tree.
+// Install describes a local lemonade ROCm llama.cpp tree.
 type Install struct {
-	Tag        string    `json:"tag"`
-	Dir        string    `json:"dir"`
-	Backend    string    `json:"backend"`
-	ServerExe  string    `json:"server_exe"`
-	CLIExe     string    `json:"cli_exe"`
-	BenchExe   string    `json:"bench_exe"`
-	Fetched    time.Time `json:"fetched"`
+	Tag       string    `json:"tag"`
+	Dir       string    `json:"dir"`
+	Backend   string    `json:"backend"`
+	ServerExe string    `json:"server_exe"`
+	CLIExe    string    `json:"cli_exe"`
+	BenchExe  string    `json:"bench_exe"`
+	Fetched   time.Time `json:"fetched"`
 }
 
 func installRoot() (string, error) {
@@ -59,6 +59,9 @@ func Current() (Install, error) {
 	if err != nil {
 		return Install{}, fmt.Errorf("runtime not installed; run: malaikat setup")
 	}
+	if inst.Backend != "" && inst.Backend != "rocm" {
+		return Install{}, fmt.Errorf("runtime backend is %q; run: malaikat setup --force (need ROCm gfx1151)", inst.Backend)
+	}
 	if !exeExists(inst) {
 		return Install{}, fmt.Errorf("runtime binaries missing; run: malaikat setup --force")
 	}
@@ -87,7 +90,6 @@ func resolveBins(inst *Install) error {
 				}
 			}
 		}
-		// recursive shallow search (zip layout varies by release)
 		var found string
 		_ = filepath.WalkDir(inst.Dir, func(path string, d os.DirEntry, err error) error {
 			if err != nil || d.IsDir() || found != "" {
@@ -106,10 +108,12 @@ func resolveBins(inst *Install) error {
 	}
 
 	inst.ServerExe = find("llama-server.exe", "llama-server")
-	inst.CLIExe = find("llama-cli.exe", "llama-cli", "main.exe", "llama.exe")
+	inst.CLIExe = find("llama-cli.exe", "llama-cli")
 	inst.BenchExe = find("llama-bench.exe", "llama-bench")
 	if inst.ServerExe == "" {
 		return fmt.Errorf("llama-server not found under %s", inst.Dir)
 	}
+	// Prefer the directory that contains the server (ROCm DLLs live beside it).
+	inst.Dir = filepath.Dir(inst.ServerExe)
 	return nil
 }

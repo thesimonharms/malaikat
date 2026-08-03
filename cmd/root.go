@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/simon/malaikat/internal/config"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func Execute() error {
 	if len(os.Args) < 2 {
@@ -16,18 +18,12 @@ func Execute() error {
 	}
 
 	switch os.Args[1] {
-	case "doctor":
-		return runDoctor(os.Args[2:])
 	case "setup":
 		return runSetup(os.Args[2:])
 	case "serve":
 		return runServe(os.Args[2:])
-	case "chat":
-		return runChat(os.Args[2:])
 	case "bench":
 		return runBench(os.Args[2:])
-	case "models":
-		return runModels(os.Args[2:])
 	case "version", "-v", "--version":
 		fmt.Println("malaikat", version)
 		return nil
@@ -41,30 +37,16 @@ func Execute() error {
 }
 
 func printUsage() {
-	fmt.Fprintf(os.Stderr, `malaikat — local LLM runner optimized for AMD Strix Halo (Windows + Vulkan)
+	fmt.Fprintf(os.Stderr, `malaikat — personal Strix Halo ROCm MoE+MTP llama-server launcher
 
 Usage:
-  malaikat <command> [options]
+  malaikat setup [--force]
+  malaikat serve [-config file] [-m model.gguf] [flags] [-- extra llama-server args]
+  malaikat bench [-config file] [-m model.gguf] [-url URL] [-ollama MODEL]
+  malaikat version
 
-Commands:
-  doctor    Detect Strix Halo / VGM / Vulkan readiness
-  setup     Download latest llama.cpp Windows Vulkan build
-  serve     Start OpenAI-compatible llama-server with tuned flags
-  chat      Interactive CLI chat via llama-cli
-  bench     Run llama-bench with Strix Halo defaults
-  models    Suggest GGUF targets for this machine
-  version   Print version
-
-Examples:
-  malaikat doctor
-  malaikat setup
-  malaikat serve -m C:\models\qwen3-30b-a3b-q4_k_m.gguf
-  malaikat chat  -m C:\models\qwen3-30b-a3b-q4_k_m.gguf
-  malaikat bench -m C:\models\qwen3-30b-a3b-q4_k_m.gguf
-
-Windows tip:
-  AMD Adrenalin → Performance → Tuning → Variable Graphics Memory = Custom
-  (leave ~32 GB for Windows on 128 GB systems), then reboot.
+Defaults: ROCm gfx1151 binary, -ngl 999, MTP draft-mtp n-max=2, MoE-friendly batches.
+Config: JSON or YAML. CLI flags override the file.
 `)
 }
 
@@ -74,23 +56,37 @@ func newFlagSet(name string) *flag.FlagSet {
 	return fs
 }
 
-func modelFlag(fs *flag.FlagSet) *string {
-	return fs.String("m", "", "path to GGUF model")
+func loadMergedConfig(configPath, model string, apply func(*config.Config)) (config.Config, error) {
+	cfg, err := config.MergeFile(configPath)
+	if err != nil {
+		return cfg, err
+	}
+	if apply != nil {
+		apply(&cfg)
+	}
+	if strings.TrimSpace(model) != "" {
+		cfg.ModelPath = model
+	}
+	cfg.ApplyDefaults()
+	return cfg, nil
 }
 
-func resolveModel(flagVal string) (string, error) {
-	m := strings.TrimSpace(flagVal)
+func requireModel(cfg config.Config) (string, error) {
+	m := strings.TrimSpace(cfg.ModelPath)
 	if m == "" {
-		cfg, err := loadConfig()
-		if err == nil && cfg.ModelPath != "" {
-			m = cfg.ModelPath
-		}
-	}
-	if m == "" {
-		return "", fmt.Errorf("model required: pass -m path/to/model.gguf (or set model_path in config)")
+		return "", fmt.Errorf("model required: -m path.gguf or model: in config file")
 	}
 	if _, err := os.Stat(m); err != nil {
 		return "", fmt.Errorf("model not found: %s", m)
 	}
 	return m, nil
+}
+
+func splitPassthrough(args []string) (flags, extra []string) {
+	for i, a := range args {
+		if a == "--" {
+			return args[:i], args[i+1:]
+		}
+	}
+	return args, nil
 }

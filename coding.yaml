@@ -1,0 +1,23 @@
+# Personal Strix Halo coding inference profile (MoE + MTP + ROCm).
+# Tuned on this machine: MTP n-max=3 + flash-attn on + KV q8_0 (~73 tok/s vs ~68 baseline / ~51 no-MTP).
+
+model: C:\Users\simon\AppData\Local\malaikat\models\Qwen3.6-35B-A3B-MTP\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+host: 127.0.0.1
+port: 8080
+ctx_size: 32768
+batch: 512
+ubatch: 512
+n_gpu_layers: 999
+parallel: 1
+jinja: true
+high_priority: true
+
+flash_attn: on
+cache_type_k: q8_0
+cache_type_v: q8_0
+
+spec_type: draft-mtp
+spec_draft_n_max: 3
+
+env:
+  HIP_VISIBLE_DEVICES: "0"

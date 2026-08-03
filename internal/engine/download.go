@@ -13,9 +13,9 @@ import (
 )
 
 const (
-	githubAPI   = "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest"
-	assetSuffix = "bin-win-vulkan-x64.zip"
-	userAgent   = "malaikat/1.0 (AMD Strix Halo; Windows Vulkan)"
+	githubAPI   = "https://api.github.com/repos/lemonade-sdk/llamacpp-rocm/releases/latest"
+	assetNeedle = "windows-rocm-gfx1151-x64.zip"
+	userAgent   = "malaikat/0.2 (AMD Strix Halo; Windows ROCm)"
 )
 
 type ghRelease struct {
@@ -27,8 +27,8 @@ type ghRelease struct {
 	} `json:"assets"`
 }
 
-// EnsureVulkan installs or updates the Windows Vulkan llama.cpp build.
-func EnsureVulkan(force bool) (Install, error) {
+// EnsureROCm installs or updates the lemonade-sdk Windows gfx1151 ROCm build.
+func EnsureROCm(force bool) (Install, error) {
 	dir, err := installRoot()
 	if err != nil {
 		return Install{}, err
@@ -43,23 +43,23 @@ func EnsureVulkan(force bool) (Install, error) {
 		return Install{}, err
 	}
 
-	assetURL, assetName, err := findVulkanAsset(rel)
+	assetURL, assetName, err := findROCmAsset(rel)
 	if err != nil {
 		return Install{}, err
 	}
 
-	if !force && current.Tag == rel.TagName && exeExists(current) {
+	if !force && current.Tag == rel.TagName && current.Backend == "rocm" && exeExists(current) {
 		return current, nil
 	}
 
-	fmt.Printf("Downloading llama.cpp %s (%s)...\n", rel.TagName, assetName)
+	fmt.Printf("Downloading llama.cpp ROCm %s (%s)...\n", rel.TagName, assetName)
 	zipPath := filepath.Join(dir, assetName)
 	if err := downloadFile(assetURL, zipPath); err != nil {
 		return Install{}, err
 	}
 	defer os.Remove(zipPath)
 
-	extractDir := filepath.Join(dir, rel.TagName)
+	extractDir := filepath.Join(dir, rel.TagName+"-rocm-gfx1151")
 	if err := os.RemoveAll(extractDir); err != nil {
 		return Install{}, err
 	}
@@ -73,7 +73,7 @@ func EnsureVulkan(force bool) (Install, error) {
 	inst := Install{
 		Tag:     rel.TagName,
 		Dir:     extractDir,
-		Backend: "vulkan",
+		Backend: "rocm",
 		Fetched: time.Now().UTC(),
 	}
 	if err := resolveBins(&inst); err != nil {
@@ -82,7 +82,7 @@ func EnsureVulkan(force bool) (Install, error) {
 	if err := WriteManifest(dir, inst); err != nil {
 		return Install{}, err
 	}
-	fmt.Printf("Installed llama.cpp %s → %s\n", inst.Tag, inst.Dir)
+	fmt.Printf("Installed llama.cpp ROCm %s → %s\n", inst.Tag, inst.Dir)
 	return inst, nil
 }
 
@@ -114,13 +114,14 @@ func latestRelease() (ghRelease, error) {
 	return rel, nil
 }
 
-func findVulkanAsset(rel ghRelease) (url, name string, err error) {
+func findROCmAsset(rel ghRelease) (url, name string, err error) {
 	for _, a := range rel.Assets {
-		if strings.Contains(strings.ToLower(a.Name), assetSuffix) {
+		n := strings.ToLower(a.Name)
+		if strings.Contains(n, assetNeedle) {
 			return a.BrowserDownloadURL, a.Name, nil
 		}
 	}
-	return "", "", fmt.Errorf("no %s asset in release %s", assetSuffix, rel.TagName)
+	return "", "", fmt.Errorf("no %s asset in release %s", assetNeedle, rel.TagName)
 }
 
 func downloadFile(url, dest string) error {
@@ -153,7 +154,7 @@ func downloadFile(url, dest string) error {
 				return werr
 			}
 			written += int64(n)
-			if written%(32*1024*1024) < int64(n) {
+			if written%(64*1024*1024) < int64(n) {
 				fmt.Printf("\r  %d MB", written/(1024*1024))
 			}
 		}
@@ -176,7 +177,8 @@ func unzip(src, dest string) error {
 	defer r.Close()
 	for _, f := range r.File {
 		target := filepath.Join(dest, f.Name)
-		if !strings.HasPrefix(filepath.Clean(target), filepath.Clean(dest)+string(os.PathSeparator)) {
+		cleanDest := filepath.Clean(dest) + string(os.PathSeparator)
+		if !strings.HasPrefix(filepath.Clean(target)+string(os.PathSeparator), cleanDest) && filepath.Clean(target) != filepath.Clean(dest) {
 			return fmt.Errorf("illegal zip path: %s", f.Name)
 		}
 		if f.FileInfo().IsDir() {
