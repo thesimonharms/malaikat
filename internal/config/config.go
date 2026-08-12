@@ -15,7 +15,7 @@ const (
 	AppName         = "malaikat"
 	DefaultHost     = "127.0.0.1"
 	DefaultPort     = 8080
-	DefaultCtxSize  = 32768
+	DefaultCtxSize  = 0 // 0 = model's trained context (largest available)
 	DefaultBatch    = 512
 	DefaultUBatch   = 512
 	DefaultNGL      = 999
@@ -28,9 +28,10 @@ const (
 // Config is loaded from a file and/or CLI flags. CLI wins.
 type Config struct {
 	ModelPath     string            `json:"model" yaml:"model"`
+	Alias         string            `json:"alias" yaml:"alias"`
 	Host          string            `json:"host" yaml:"host"`
 	Port          int               `json:"port" yaml:"port"`
-	CtxSize       int               `json:"ctx_size" yaml:"ctx_size"`
+	CtxSize       int               `json:"ctx_size" yaml:"ctx_size"` // 0 = model max
 	Batch         int               `json:"batch" yaml:"batch"`
 	UBatch        int               `json:"ubatch" yaml:"ubatch"`
 	NGL           int               `json:"n_gpu_layers" yaml:"n_gpu_layers"`
@@ -146,9 +147,7 @@ func (c *Config) ApplyDefaults() {
 	if c.Port == 0 {
 		c.Port = d.Port
 	}
-	if c.CtxSize == 0 {
-		c.CtxSize = d.CtxSize
-	}
+	// CtxSize 0 means "use model trained context" — do not replace.
 	if c.Batch == 0 {
 		c.Batch = d.Batch
 	}
@@ -194,4 +193,49 @@ func MergeFile(path string) (Config, error) {
 		return cfg, err
 	}
 	return cfg, nil
+}
+
+// LastPath is where the most recent successful serve settings are stored.
+func LastPath() (string, error) {
+	dir, err := Dir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dir, "last.yaml"), nil
+}
+
+// LoadLast reads last.yaml. ok is false if it does not exist.
+func LoadLast() (Config, bool, error) {
+	path, err := LastPath()
+	if err != nil {
+		return Default(), false, err
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return Default(), false, nil
+		}
+		return Default(), false, err
+	}
+	cfg := Default()
+	if err := yaml.Unmarshal(data, &cfg); err != nil {
+		return Default(), false, fmt.Errorf("parse %s: %w", path, err)
+	}
+	cfg.ApplyDefaults()
+	return cfg, true, nil
+}
+
+// SaveLast writes the effective serve settings for the next bare `malaikat serve`.
+func SaveLast(cfg Config) error {
+	path, err := LastPath()
+	if err != nil {
+		return err
+	}
+	cfg.ApplyDefaults()
+	data, err := yaml.Marshal(&cfg)
+	if err != nil {
+		return err
+	}
+	header := "# Last successful malaikat serve settings.\n# Used by bare: malaikat serve\n"
+	return os.WriteFile(path, append([]byte(header), data...), 0o644)
 }

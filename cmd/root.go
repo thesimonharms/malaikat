@@ -9,7 +9,7 @@ import (
 	"github.com/simon/malaikat/internal/config"
 )
 
-const version = "0.2.0"
+const version = "0.2.1"
 
 func Execute() error {
 	if len(os.Args) < 2 {
@@ -37,17 +37,24 @@ func Execute() error {
 }
 
 func printUsage() {
+	lastHint := "%AppData%\\malaikat\\last.yaml"
+	if p, err := config.LastPath(); err == nil {
+		lastHint = p
+	}
 	fmt.Fprintf(os.Stderr, `malaikat — personal Strix Halo ROCm MoE+MTP llama-server launcher
 
 Usage:
   malaikat setup [--force]
+  malaikat serve
   malaikat serve [-config file] [-m model.gguf] [flags] [-- extra llama-server args]
   malaikat bench [-config file] [-m model.gguf] [-url URL] [-ollama MODEL]
   malaikat version
 
-Defaults: ROCm gfx1151 binary, -ngl 999, MTP draft-mtp n-max=2, MoE-friendly batches.
-Config: JSON or YAML. CLI flags override the file.
-`)
+Bare "malaikat serve" reloads the last successful settings from:
+  %s
+
+CLI flags override -config; -config (or first run) overrides last.yaml.
+`, lastHint)
 }
 
 func newFlagSet(name string) *flag.FlagSet {
@@ -56,11 +63,31 @@ func newFlagSet(name string) *flag.FlagSet {
 	return fs
 }
 
-func loadMergedConfig(configPath, model string, apply func(*config.Config)) (config.Config, error) {
-	cfg, err := config.MergeFile(configPath)
-	if err != nil {
-		return cfg, err
+// loadServeConfig resolves settings in order: last.yaml → -config file → CLI.
+// When -config is set, that file replaces last.yaml as the base.
+func loadServeConfig(configPath, model string, apply func(*config.Config)) (config.Config, string, error) {
+	var (
+		cfg    config.Config
+		source string
+		err    error
+	)
+
+	if strings.TrimSpace(configPath) != "" {
+		cfg, err = config.MergeFile(configPath)
+		if err != nil {
+			return cfg, "", err
+		}
+		source = configPath
+	} else if last, ok, lerr := config.LoadLast(); lerr != nil {
+		return last, "", lerr
+	} else if ok {
+		cfg = last
+		source, _ = config.LastPath()
+	} else {
+		cfg = config.Default()
+		source = "defaults"
 	}
+
 	if apply != nil {
 		apply(&cfg)
 	}
@@ -68,18 +95,31 @@ func loadMergedConfig(configPath, model string, apply func(*config.Config)) (con
 		cfg.ModelPath = model
 	}
 	cfg.ApplyDefaults()
-	return cfg, nil
+	return cfg, source, nil
+}
+
+func loadMergedConfig(configPath, model string, apply func(*config.Config)) (config.Config, error) {
+	cfg, _, err := loadServeConfig(configPath, model, apply)
+	return cfg, err
 }
 
 func requireModel(cfg config.Config) (string, error) {
 	m := strings.TrimSpace(cfg.ModelPath)
 	if m == "" {
-		return "", fmt.Errorf("model required: -m path.gguf or model: in config file")
+		return "", fmt.Errorf("model required: run with -m / -config once, or set model in %s", mustLastPath())
 	}
 	if _, err := os.Stat(m); err != nil {
 		return "", fmt.Errorf("model not found: %s", m)
 	}
 	return m, nil
+}
+
+func mustLastPath() string {
+	p, err := config.LastPath()
+	if err != nil {
+		return "%AppData%\\malaikat\\last.yaml"
+	}
+	return p
 }
 
 func splitPassthrough(args []string) (flags, extra []string) {

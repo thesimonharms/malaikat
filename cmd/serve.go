@@ -18,9 +18,10 @@ func runServe(args []string) error {
 	fs := newFlagSet("serve")
 	configPath := fs.String("config", "", "JSON/YAML config file")
 	model := fs.String("m", "", "GGUF model path")
+	alias := fs.String("alias", "", "API model id alias")
 	host := fs.String("host", "", "bind host")
 	port := fs.Int("port", 0, "bind port")
-	ctxSize := fs.Int("c", 0, "context size")
+	ctxSize := fs.Int("c", -1, "context size (0 = model max; -1 = config)")
 	ngl := fs.Int("ngl", -1, "GPU layers")
 	batch := fs.Int("b", 0, "batch size")
 	ubatch := fs.Int("ub", 0, "ubatch size")
@@ -28,18 +29,22 @@ func runServe(args []string) error {
 	draftMax := fs.Int("spec-draft-n-max", -1, "MTP draft n-max")
 	fa := fs.String("fa", "", "flash-attn on|off")
 	noMTP := fs.Bool("no-mtp", false, "disable MTP speculative decode")
+	noSave := fs.Bool("no-save", false, "do not remember these settings as last-used")
 	if err := fs.Parse(flags); err != nil {
 		return err
 	}
 
-	cfg, err := loadMergedConfig(*configPath, *model, func(c *config.Config) {
+	cfg, source, err := loadServeConfig(*configPath, *model, func(c *config.Config) {
 		if *host != "" {
 			c.Host = *host
 		}
 		if *port != 0 {
 			c.Port = *port
 		}
-		if *ctxSize != 0 {
+		if *alias != "" {
+			c.Alias = *alias
+		}
+		if *ctxSize >= 0 {
 			c.CtxSize = *ctxSize
 		}
 		if *ngl >= 0 {
@@ -68,10 +73,16 @@ func runServe(args []string) error {
 		return err
 	}
 
+	// Passthrough after -- becomes remembered extra_args when we save.
+	if len(passthrough) > 0 {
+		cfg.ExtraArgs = append([]string{}, passthrough...)
+	}
+
 	modelPath, err := requireModel(cfg)
 	if err != nil {
 		return err
 	}
+	cfg.ModelPath = modelPath
 
 	inst, err := engine.Current()
 	if err != nil {
@@ -88,11 +99,20 @@ func runServe(args []string) error {
 	argv := engine.BuildServerArgs(opts)
 
 	fmt.Println("malaikat serve")
+	fmt.Println("settings:", source)
 	fmt.Println("runtime:", inst.Tag, "("+inst.Backend+")")
 	fmt.Println("model:  ", modelPath)
 	fmt.Println("listen: ", opts.BaseURL())
 	fmt.Println("argv:   ", engine.FormatArgs(inst.ServerExe, argv))
 	fmt.Println()
+
+	if !*noSave {
+		if err := config.SaveLast(cfg); err != nil {
+			fmt.Fprintf(os.Stderr, "warning: could not save last settings: %v\n", err)
+		} else if p, err := config.LastPath(); err == nil {
+			fmt.Println("remembered:", p)
+		}
+	}
 
 	cmd := engine.Command(inst, argv, profile)
 	if err := cmd.Start(); err != nil {

@@ -13,6 +13,7 @@ type Profile struct {
 	Batch         int
 	UBatch        int
 	CtxSize       int
+	Alias         string
 	Threads       int
 	FlashAttn     string // on|off|auto|""; empty omits flag
 	CacheTypeK    string
@@ -34,6 +35,7 @@ func FromConfig(cfg config.Config) Profile {
 		Batch:         cfg.Batch,
 		UBatch:        cfg.UBatch,
 		CtxSize:       cfg.CtxSize,
+		Alias:         cfg.Alias,
 		Threads:       cfg.Threads,
 		FlashAttn:     cfg.FlashAttn,
 		CacheTypeK:    cfg.CacheTypeK,

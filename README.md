@@ -18,10 +18,14 @@ go build -o malaikat.exe .
 ## Serve
 
 ```powershell
-.\malaikat.exe serve -config .\coding.yaml -m D:\models\Qwen3.6-35B-A3B-MTP-Q4_K_M.gguf
+# First time (or when changing models): pass a config / flags once
+.\malaikat.exe serve -config .\coding.yaml
+
+# After that, bare serve reloads the last successful settings:
+.\malaikat.exe serve
 ```
 
-Or put `model:` in the YAML. Passthrough extra llama-server flags after `--`:
+Last settings are stored at `%AppData%\malaikat\last.yaml`. Use `-no-save` to skip updating them. Passthrough extra llama-server flags after `--` (also remembered):
 
 ```powershell
 .\malaikat.exe serve -m .\model.gguf -- --cache-type-k q8_0
@@ -29,7 +33,7 @@ Or put `model:` in the YAML. Passthrough extra llama-server flags after `--`:
 
 API: `http://127.0.0.1:8080/v1`
 
-Defaults (swept on Strix Halo ROCm): `-ngl 999`, `-b/-ub 512`, `-fa on`, `--cache-type-k/v q8_0`, `--jinja`, `--spec-type draft-mtp --spec-draft-n-max 3`, `HIP_VISIBLE_DEVICES=0`.
+Defaults (swept on Strix Halo ROCm): `-ngl 999`, `-b/-ub 2048/1024` (coding.yaml; better long-prompt pp), `-fa on`, `--cache-type-k/v q8_0`, `--jinja`, `--spec-type draft-mtp --spec-draft-n-max 3`, `HIP_VISIBLE_DEVICES=0`.
 
 Disable MTP: `-no-mtp`. Draft depth: `-spec-draft-n-max N`.
 

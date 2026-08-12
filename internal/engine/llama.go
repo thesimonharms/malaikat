@@ -39,12 +39,15 @@ func BuildServerArgs(o ServerOpts) []string {
 		"-m", o.Model,
 		"--host", o.Host,
 		"--port", strconv.Itoa(o.Port),
-		"-c", strconv.Itoa(p.CtxSize),
+		"-c", strconv.Itoa(p.CtxSize), // 0 = model trained context
 		"-b", strconv.Itoa(p.Batch),
 		"-ub", strconv.Itoa(p.UBatch),
 		"-ngl", strconv.Itoa(p.NGL),
 		"-t", strconv.Itoa(p.Threads),
 		"-np", strconv.Itoa(p.Parallel),
+	}
+	if p.Alias != "" {
+		args = append(args, "--alias", p.Alias)
 	}
 	if p.FlashAttn != "" {
 		args = append(args, "-fa", p.FlashAttn)
