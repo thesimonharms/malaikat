@@ -57,12 +57,18 @@ func Current() (Install, error) {
 	}
 	inst, err := ReadManifest(root)
 	if err != nil {
+		if HasEmbeddedROCm() {
+			return EnsureROCm(false)
+		}
 		return Install{}, fmt.Errorf("runtime not installed; run: malaikat setup")
 	}
 	if inst.Backend != "" && inst.Backend != "rocm" {
 		return Install{}, fmt.Errorf("runtime backend is %q; run: malaikat setup --force (need ROCm gfx1151)", inst.Backend)
 	}
 	if !exeExists(inst) {
+		if HasEmbeddedROCm() {
+			return EnsureROCm(true)
+		}
 		return Install{}, fmt.Errorf("runtime binaries missing; run: malaikat setup --force")
 	}
 	return inst, nil

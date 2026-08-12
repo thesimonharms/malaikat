@@ -13,7 +13,11 @@ func runSetup(args []string) error {
 		return err
 	}
 
-	fmt.Println("Installing lemonade-sdk llamacpp-rocm Windows gfx1151 build...")
+	if engine.HasEmbeddedROCm() {
+		fmt.Println("Installing bundled lemonade-sdk llamacpp-rocm Windows gfx1151 build...")
+	} else {
+		fmt.Println("Installing lemonade-sdk llamacpp-rocm Windows gfx1151 build...")
+	}
 	inst, err := engine.EnsureROCm(*force)
 	if err != nil {
 		return err
@@ -22,6 +26,6 @@ func runSetup(args []string) error {
 	fmt.Printf("Ready: %s (%s)\n", inst.Tag, inst.Backend)
 	fmt.Printf("Server: %s\n", inst.ServerExe)
 	fmt.Println("Verify MTP: malaikat serve will pass --spec-type draft-mtp")
-	fmt.Println("Next: malaikat serve -config coding.yaml")
+	fmt.Println("Next: malaikat serve -m path\\to\\model.gguf")
 	return nil
 }

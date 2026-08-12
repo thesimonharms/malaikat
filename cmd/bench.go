@@ -51,13 +51,13 @@ func runBench(args []string) error {
 		if err != nil {
 			return err
 		}
-		inst, err := engine.Current()
-		if err != nil {
-			return err
-		}
-		if inst.BenchExe == "" {
-			return fmt.Errorf("llama-bench not in runtime")
-		}
+	inst, err := engine.EnsureROCm(false)
+	if err != nil {
+		return err
+	}
+	if inst.BenchExe == "" {
+		return fmt.Errorf("llama-bench not in runtime")
+	}
 		profile := optimize.FromConfig(cfg)
 		bargs := engine.BuildBenchArgs(modelPath, profile)
 		fmt.Println()

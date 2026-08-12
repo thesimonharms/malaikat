@@ -84,7 +84,7 @@ func runServe(args []string) error {
 	}
 	cfg.ModelPath = modelPath
 
-	inst, err := engine.Current()
+	inst, err := engine.EnsureROCm(false)
 	if err != nil {
 		return err
 	}

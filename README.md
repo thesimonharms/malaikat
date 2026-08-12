@@ -6,14 +6,24 @@ No chat UI. No model store. Config file or CLI → OpenAI-compatible API.
 
 > Prefer **MoE MTP** GGUFs (e.g. Qwen3.6-35B-A3B-MTP). Dense models are bandwidth-bound on this APU.
 
-## Setup
+## Download (all-in-one)
+
+Grab `malaikat-*-windows-amd64.exe` from [Releases](https://github.com/thesimonharms/malaikat/releases). It embeds the lemonade ROCm gfx1151 runtime (not the model):
+
+```powershell
+.\malaikat-0.1.0-windows-amd64.exe serve -m path\to\moe-mtp.gguf
+```
+
+First run extracts the runtime to `%LocalAppData%\malaikat\runtime`.
+
+## Setup (from source)
 
 ```powershell
 go build -o malaikat.exe .
 .\malaikat.exe setup
 ```
 
-`setup` pulls the latest [lemonade-sdk/llamacpp-rocm](https://github.com/lemonade-sdk/llamacpp-rocm) **Windows gfx1151** zip (ROCm runtime bundled) into `%LocalAppData%\malaikat\runtime`.
+`setup` pulls the latest [lemonade-sdk/llamacpp-rocm](https://github.com/lemonade-sdk/llamacpp-rocm) **Windows gfx1151** zip (ROCm runtime bundled) into `%LocalAppData%\malaikat\runtime`. All-in-one builds skip the download and unpack the embedded zip instead.
 
 ## Serve
 
@@ -62,4 +72,11 @@ Use `scripts/sweep-speed.ps1` to re-sweep after runtime upgrades.
 
 ## Config
 
-JSON or YAML. See [`coding.yaml`](coding.yaml). CLI overrides the file.
+JSON or YAML. See [`coding.example.yaml`](coding.example.yaml). CLI overrides the file.
+
+## Release build
+
+```powershell
+.\scripts\release.ps1              # → dist\malaikat-0.1.0-windows-amd64.exe
+.\scripts\release.ps1 -Publish     # tag v0.1.0 + GitHub release
+```

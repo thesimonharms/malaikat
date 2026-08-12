@@ -9,7 +9,7 @@ import (
 	"github.com/simon/malaikat/internal/config"
 )
 
-const version = "0.2.1"
+const version = "0.1.0"
 
 func Execute() error {
 	if len(os.Args) < 2 {

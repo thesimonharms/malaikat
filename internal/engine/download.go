@@ -15,7 +15,7 @@ import (
 const (
 	githubAPI   = "https://api.github.com/repos/lemonade-sdk/llamacpp-rocm/releases/latest"
 	assetNeedle = "windows-rocm-gfx1151-x64.zip"
-	userAgent   = "malaikat/0.2 (AMD Strix Halo; Windows ROCm)"
+	userAgent   = "malaikat/0.1 (AMD Strix Halo; Windows ROCm)"
 )
 
 type ghRelease struct {
@@ -27,7 +27,9 @@ type ghRelease struct {
 	} `json:"assets"`
 }
 
-// EnsureROCm installs or updates the lemonade-sdk Windows gfx1151 ROCm build.
+// EnsureROCm installs the ROCm runtime: prefer a working local install, then
+// the zip embedded in all-in-one builds, then download from GitHub.
+// With force=true, try a network update first (fall back to embedded).
 func EnsureROCm(force bool) (Install, error) {
 	dir, err := installRoot()
 	if err != nil {
@@ -35,10 +37,62 @@ func EnsureROCm(force bool) (Install, error) {
 	}
 
 	current, _ := ReadManifest(dir)
+	if !force && current.Backend == "rocm" && exeExists(current) {
+		return current, nil
+	}
+
+	if force {
+		inst, err := downloadROCm(dir, current, true)
+		if err == nil {
+			return inst, nil
+		}
+		if HasEmbeddedROCm() {
+			fmt.Fprintf(os.Stderr, "warning: download failed (%v); using embedded runtime\n", err)
+			return installEmbedded(dir)
+		}
+		return Install{}, err
+	}
+
+	if HasEmbeddedROCm() {
+		inst, err := installEmbedded(dir)
+		if err == nil {
+			return inst, nil
+		}
+		fmt.Fprintf(os.Stderr, "warning: embedded runtime extract failed: %v\n", err)
+	}
+	return downloadROCm(dir, current, false)
+}
+
+func installEmbedded(dir string) (Install, error) {
+	tag, err := extractEmbeddedROCm(dir)
+	if err != nil {
+		return Install{}, err
+	}
+	extractDir := filepath.Join(dir, tag+"-rocm-gfx1151")
+	inst := Install{
+		Tag:     tag,
+		Dir:     extractDir,
+		Backend: "rocm",
+		Fetched: time.Now().UTC(),
+	}
+	if err := resolveBins(&inst); err != nil {
+		return Install{}, err
+	}
+	if err := WriteManifest(dir, inst); err != nil {
+		return Install{}, err
+	}
+	fmt.Printf("Installed bundled llama.cpp ROCm %s → %s\n", inst.Tag, inst.Dir)
+	return inst, nil
+}
+
+func downloadROCm(dir string, current Install, force bool) (Install, error) {
 	rel, err := latestRelease()
 	if err != nil {
-		if current.Tag != "" && !force {
+		if current.Tag != "" && !force && exeExists(current) {
 			return current, nil
+		}
+		if HasEmbeddedROCm() {
+			return installEmbedded(dir)
 		}
 		return Install{}, err
 	}
@@ -55,6 +109,10 @@ func EnsureROCm(force bool) (Install, error) {
 	fmt.Printf("Downloading llama.cpp ROCm %s (%s)...\n", rel.TagName, assetName)
 	zipPath := filepath.Join(dir, assetName)
 	if err := downloadFile(assetURL, zipPath); err != nil {
+		if HasEmbeddedROCm() {
+			fmt.Fprintf(os.Stderr, "warning: download failed (%v); using embedded runtime\n", err)
+			return installEmbedded(dir)
+		}
 		return Install{}, err
 	}
 	defer os.Remove(zipPath)
