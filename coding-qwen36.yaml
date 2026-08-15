@@ -1,0 +1,25 @@
+# Unsloth Qwen3.6-35B-A3B MTP (MoE) via malaikat ROCm.
+# Tuned on this machine: MTP n-max=3 + FA on + KV q8_0.
+# batch/ubatch 2048/1024: ~+31% prompt tok/s at ~11k-token coding prompts; tg unchanged.
+
+model: C:\Users\simon\AppData\Local\malaikat\models\Qwen3.6-35B-A3B-MTP\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+alias: qwen3.6-35b-a3b-mtp
+host: 127.0.0.1
+port: 8080
+ctx_size: 0
+batch: 2048
+ubatch: 1024
+n_gpu_layers: 999
+parallel: 1
+jinja: true
+high_priority: true
+
+flash_attn: on
+cache_type_k: q8_0
+cache_type_v: q8_0
+
+spec_type: draft-mtp
+spec_draft_n_max: 3
+
+env:
+  HIP_VISIBLE_DEVICES: "0"

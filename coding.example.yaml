@@ -1,8 +1,8 @@
-# Example config for malaikat serve (MoE + MTP on Strix Halo ROCm).
+# Example config for malaikat serve (MTP on Strix Halo ROCm).
 # Copy and set model to your GGUF path — models are not bundled.
 
-# model: C:\path\to\Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
-alias: qwen3.6-35b-a3b-mtp
+# model: C:\path\to\Qwen3.8-27B-UD-Q4_K_XL.gguf
+alias: qwen3.8-27b-mtp
 host: 127.0.0.1
 port: 8080
 ctx_size: 0
