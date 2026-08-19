@@ -6,27 +6,35 @@ No chat UI. No model store. Config file or CLI → OpenAI-compatible API.
 
 > Prefer **MoE MTP** GGUFs (e.g. Qwen3.6-35B-A3B-MTP). Dense models are bandwidth-bound on this APU.
 
-## Download (all-in-one)
-
-Grab `malaikat-*-linux-amd64` from [Releases](https://github.com/thesimonharms/malaikat/releases). It embeds the lemonade ROCm gfx1151 runtime (not the model):
-
-```bash
-chmod +x malaikat-0.2.0-linux-amd64
-./malaikat-0.2.0-linux-amd64 serve -m path/to/moe-mtp.gguf
-```
-
-First run extracts the runtime to `~/.cache/malaikat/runtime`.
-
 ## Setup (from source)
+
+Requirements: Go 1.22+, and the ROCm HIP SDK (Arch: `sudo pacman -S --needed base-devel cmake git rocm-hip-sdk rocblas hipblas hipblaslt`).
 
 ```bash
 go build -o malaikat .
 ./malaikat setup
 ```
 
-`setup` pulls the latest [lemonade-sdk/llamacpp-rocm](https://github.com/lemonade-sdk/llamacpp-rocm) **Ubuntu gfx1151** zip (ROCm runtime bundled) into `~/.cache/malaikat/runtime`. All-in-one builds skip the download and unpack the embedded zip instead. Serving puts the bundled ROCm libs on `LD_LIBRARY_PATH` automatically — a system ROCm install is not required, but the kernel driver (`/dev/kfd`) is.
+`setup` clones [llama.cpp](https://github.com/ggml-org/llama.cpp) into `~/.cache/malaikat/llama.cpp-src` and builds it natively against the system ROCm (`-DGGML_HIP=ON -DAMDGPU_TARGETS=gfx1151`, plus the rocWMMA flash-attention kernels when the `rocwmma` headers are installed). No bundled runtime, no container, links straight against `/opt/rocm`.
+
+Useful variants:
+
+```bash
+./malaikat setup --force        # git pull master + rebuild
+./malaikat setup --ref b1311    # pin a known-good llama.cpp tag
+./malaikat setup --bundle       # fallback: prebuilt lemonade-sdk Ubuntu ROCm zip instead
+```
 
 Large GGUFs are allocated from unified (GTT) memory; if llama-server fails to allocate for a big model, check `dmesg | grep -i amdgpu` for GTT limits.
+
+## Download (all-in-one, no ROCm toolchain)
+
+For machines *without* a ROCm install, `malaikat-*-linux-amd64` from [Releases](https://github.com/thesimonharms/malaikat/releases) embeds the lemonade ROCm gfx1151 bundle (not the model) and extracts it to `~/.cache/malaikat/runtime` on first run:
+
+```bash
+chmod +x malaikat-0.2.0-linux-amd64
+./malaikat-0.2.0-linux-amd64 serve -m path/to/moe-mtp.gguf
+```
 
 ## Serve
 

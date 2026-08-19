@@ -41,7 +41,7 @@ func printUsage() {
 	fmt.Fprintf(os.Stderr, `malaikat — personal Strix Halo ROCm MoE+MTP llama-server launcher
 
 Usage:
-  malaikat setup [--force]
+  malaikat setup [--force] [--bundle | --source] [--ref TAG]
   malaikat serve
   malaikat serve [-config file] [-m model.gguf] [flags] [-- extra llama-server args]
   malaikat bench [-config file] [-m model.gguf] [-url URL] [-ollama MODEL]
