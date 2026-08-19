@@ -14,8 +14,8 @@ import (
 
 const (
 	githubAPI   = "https://api.github.com/repos/lemonade-sdk/llamacpp-rocm/releases/latest"
-	assetNeedle = "windows-rocm-gfx1151-x64.zip"
-	userAgent   = "malaikat/0.1 (AMD Strix Halo; Windows ROCm)"
+	assetNeedle = "ubuntu-rocm-gfx1151-x64.zip"
+	userAgent   = "malaikat/0.2 (AMD Strix Halo; Linux ROCm)"
 )
 
 type ghRelease struct {

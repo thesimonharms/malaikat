@@ -9,7 +9,7 @@ import (
 	"github.com/simon/malaikat/internal/config"
 )
 
-const version = "0.1.0"
+const version = "0.2.0"
 
 func Execute() error {
 	if len(os.Args) < 2 {
@@ -37,10 +37,7 @@ func Execute() error {
 }
 
 func printUsage() {
-	lastHint := "%AppData%\\malaikat\\last.yaml"
-	if p, err := config.LastPath(); err == nil {
-		lastHint = p
-	}
+	lastHint := lastPathHint()
 	fmt.Fprintf(os.Stderr, `malaikat — personal Strix Halo ROCm MoE+MTP llama-server launcher
 
 Usage:
@@ -104,7 +101,7 @@ func loadMergedConfig(configPath, model string, apply func(*config.Config)) (con
 }
 
 func requireModel(cfg config.Config) (string, error) {
-	m := strings.TrimSpace(cfg.ModelPath)
+	m := config.ExpandPath(strings.TrimSpace(cfg.ModelPath))
 	if m == "" {
 		return "", fmt.Errorf("model required: run with -m / -config once, or set model in %s", mustLastPath())
 	}
@@ -115,11 +112,14 @@ func requireModel(cfg config.Config) (string, error) {
 }
 
 func mustLastPath() string {
-	p, err := config.LastPath()
-	if err != nil {
-		return "%AppData%\\malaikat\\last.yaml"
+	return lastPathHint()
+}
+
+func lastPathHint() string {
+	if p, err := config.LastPath(); err == nil {
+		return p
 	}
-	return p
+	return "~/.config/malaikat/last.yaml"
 }
 
 func splitPassthrough(args []string) (flags, extra []string) {

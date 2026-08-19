@@ -1,7 +1,9 @@
-from huggingface_hub import hf_hub_download
 import os
 
-dest = os.path.join(os.environ["LOCALAPPDATA"], "malaikat", "models", "Qwen3.8-27B-MTP")
+from huggingface_hub import hf_hub_download
+
+base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+dest = os.path.join(base, "malaikat", "models", "Qwen3.8-27B-MTP")
 os.makedirs(dest, exist_ok=True)
 print("dest=", dest, flush=True)
 p = hf_hub_download(

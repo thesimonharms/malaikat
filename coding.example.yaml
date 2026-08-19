@@ -1,7 +1,8 @@
-# Example config for malaikat serve (MTP on Strix Halo ROCm).
+# Example config for malaikat serve (MTP on Strix Halo ROCm, Linux).
 # Copy and set model to your GGUF path — models are not bundled.
+# "~" and $ENV vars in the model path are expanded.
 
-# model: C:\path\to\Qwen3.8-27B-UD-Q4_K_XL.gguf
+# model: ~/.local/share/malaikat/models/Qwen3.8-27B-MTP/Qwen3.8-27B-UD-Q4_K_XL.gguf
 alias: qwen3.8-27b-mtp
 host: 127.0.0.1
 port: 8080
@@ -11,7 +12,6 @@ ubatch: 1024
 n_gpu_layers: 999
 parallel: 1
 jinja: true
-high_priority: true
 
 flash_attn: on
 cache_type_k: q8_0
@@ -22,3 +22,4 @@ spec_draft_n_max: 3
 
 env:
   HIP_VISIBLE_DEVICES: "0"
+  ROCR_VISIBLE_DEVICES: "0"

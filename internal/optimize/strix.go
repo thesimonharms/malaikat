@@ -22,7 +22,6 @@ type Profile struct {
 	Parallel      int
 	SpecType      string
 	SpecDraftNMax int
-	HighPriority  bool
 	ExtraArgs     []string
 	ExtraEnv      map[string]string
 }
@@ -44,7 +43,6 @@ func FromConfig(cfg config.Config) Profile {
 		Parallel:      cfg.Parallel,
 		SpecType:      cfg.SpecType,
 		SpecDraftNMax: cfg.SpecDraftNMax,
-		HighPriority:  cfg.HighPriority,
 		ExtraArgs:     append([]string{}, cfg.ExtraArgs...),
 		ExtraEnv:      map[string]string{},
 	}
@@ -78,8 +76,9 @@ func FromConfig(cfg config.Config) Profile {
 		}
 	}
 
-	// Pin the Strix Halo iGPU; do not hide HIP.
+	// Pin the Strix Halo iGPU for both the HIP and ROCr runtimes.
 	p.ExtraEnv["HIP_VISIBLE_DEVICES"] = "0"
+	p.ExtraEnv["ROCR_VISIBLE_DEVICES"] = "0"
 	for k, v := range cfg.Env {
 		p.ExtraEnv[k] = v
 	}

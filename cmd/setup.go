@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 
+	"github.com/simon/malaikat/internal/config"
 	"github.com/simon/malaikat/internal/engine"
 )
 
@@ -14,9 +15,9 @@ func runSetup(args []string) error {
 	}
 
 	if engine.HasEmbeddedROCm() {
-		fmt.Println("Installing bundled lemonade-sdk llamacpp-rocm Windows gfx1151 build...")
+		fmt.Println("Installing bundled lemonade-sdk llamacpp-rocm Ubuntu gfx1151 build...")
 	} else {
-		fmt.Println("Installing lemonade-sdk llamacpp-rocm Windows gfx1151 build...")
+		fmt.Println("Installing lemonade-sdk llamacpp-rocm Ubuntu gfx1151 build...")
 	}
 	inst, err := engine.EnsureROCm(*force)
 	if err != nil {
@@ -25,7 +26,10 @@ func runSetup(args []string) error {
 
 	fmt.Printf("Ready: %s (%s)\n", inst.Tag, inst.Backend)
 	fmt.Printf("Server: %s\n", inst.ServerExe)
+	if dir, err := config.ModelsDir(); err == nil {
+		fmt.Println("Models:", dir)
+	}
 	fmt.Println("Verify MTP: malaikat serve will pass --spec-type draft-mtp")
-	fmt.Println("Next: malaikat serve -m path\\to\\model.gguf")
+	fmt.Println("Next: malaikat serve -m path/to/model.gguf")
 	return nil
 }

@@ -51,13 +51,13 @@ func runBench(args []string) error {
 		if err != nil {
 			return err
 		}
-	inst, err := engine.EnsureROCm(false)
-	if err != nil {
-		return err
-	}
-	if inst.BenchExe == "" {
-		return fmt.Errorf("llama-bench not in runtime")
-	}
+		inst, err := engine.EnsureROCm(false)
+		if err != nil {
+			return err
+		}
+		if inst.BenchExe == "" {
+			return fmt.Errorf("llama-bench not in runtime")
+		}
 		profile := optimize.FromConfig(cfg)
 		bargs := engine.BuildBenchArgs(modelPath, profile)
 		fmt.Println()
@@ -99,9 +99,9 @@ func timeChatAPI(endpoint, label, prompt string, maxTokens int) error {
 			TotalTokens      int `json:"total_tokens"`
 		} `json:"usage"`
 		Timings struct {
-			PredictedN          float64 `json:"predicted_n"`
-			PredictedPerSecond  float64 `json:"predicted_per_second"`
-			PromptPerSecond     float64 `json:"prompt_per_second"`
+			PredictedN         float64 `json:"predicted_n"`
+			PredictedPerSecond float64 `json:"predicted_per_second"`
+			PromptPerSecond    float64 `json:"prompt_per_second"`
 		} `json:"timings"`
 	}
 	_ = json.Unmarshal(data, &parsed)
@@ -150,9 +150,9 @@ func timeOllama(model, prompt string, maxTokens int) error {
 		return fmt.Errorf("%s: %s", resp.Status, truncate(string(data), 300))
 	}
 	var parsed struct {
-		EvalCount    int     `json:"eval_count"`
-		EvalDuration int64   `json:"eval_duration"`
-		Response     string  `json:"response"`
+		EvalCount    int    `json:"eval_count"`
+		EvalDuration int64  `json:"eval_duration"`
+		Response     string `json:"response"`
 	}
 	_ = json.Unmarshal(data, &parsed)
 	tps := 0.0

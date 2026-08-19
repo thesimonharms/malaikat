@@ -89,46 +89,55 @@ func BuildBenchArgs(model string, p optimize.Profile) []string {
 	return args
 }
 
-// Command prepares an exec.Cmd with ROCm DLL path, env, optional high priority.
+// prependEnv prepends val to a list-valued env entry, adding it if missing.
+func prependEnv(env []string, key, val string) []string {
+	if val == "" {
+		return env
+	}
+	prefix := key + "="
+	for i, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			env[i] = prefix + val + string(os.PathListSeparator) + e[len(prefix):]
+			return env
+		}
+	}
+	return append(env, prefix+val)
+}
+
+// setEnv sets key=val, replacing any existing entry so the profile wins.
+func setEnv(env []string, key, val string) []string {
+	prefix := key + "="
+	for i, e := range env {
+		if strings.HasPrefix(e, prefix) {
+			env[i] = prefix + val
+			return env
+		}
+	}
+	return append(env, prefix+val)
+}
+
+// serverEnv builds the child environment: bundled ROCm shared libraries on
+// LD_LIBRARY_PATH, runtime binaries on PATH, plus profile env overrides.
+func serverEnv(inst Install, p optimize.Profile) []string {
+	env := os.Environ()
+	for _, d := range inst.LibDirs() {
+		env = prependEnv(env, "LD_LIBRARY_PATH", d)
+	}
+	env = prependEnv(env, "PATH", filepath.Dir(inst.ServerExe))
+	for k, v := range p.ExtraEnv {
+		env = setEnv(env, k, v)
+	}
+	return env
+}
+
+// Command prepares an exec.Cmd with the bundled ROCm runtime on the library path.
 func Command(inst Install, args []string, p optimize.Profile) *exec.Cmd {
 	cmd := exec.Command(inst.ServerExe, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	workDir := inst.Dir
-	if workDir == "" {
-		workDir = filepath.Dir(inst.ServerExe)
-	}
-	cmd.Dir = workDir
-
-	env := os.Environ()
-	binDir := filepath.Dir(inst.ServerExe)
-	pathPrepend := binDir
-	if workDir != binDir {
-		pathPrepend = workDir + string(os.PathListSeparator) + binDir
-	}
-	pathSet := false
-	for i, e := range env {
-		if strings.HasPrefix(strings.ToUpper(e), "PATH=") {
-			env[i] = e[:5] + pathPrepend + string(os.PathListSeparator) + e[5:]
-			// handle Path= on Windows
-			if strings.HasPrefix(e, "Path=") {
-				env[i] = "Path=" + pathPrepend + string(os.PathListSeparator) + e[5:]
-			}
-			pathSet = true
-			break
-		}
-	}
-	if !pathSet {
-		env = append(env, "Path="+pathPrepend)
-	}
-	for k, v := range p.ExtraEnv {
-		env = append(env, k+"="+v)
-	}
-	cmd.Env = env
-	if p.HighPriority {
-		setHighPriority(cmd)
-	}
+	cmd.Dir = filepath.Dir(inst.ServerExe)
+	cmd.Env = serverEnv(inst, p)
 	return cmd
 }
 
@@ -141,22 +150,8 @@ func BenchCommand(inst Install, args []string, p optimize.Profile) *exec.Cmd {
 	cmd := exec.Command(exe, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Dir = inst.Dir
-	if cmd.Dir == "" {
-		cmd.Dir = filepath.Dir(exe)
-	}
-	env := os.Environ()
-	binDir := filepath.Dir(exe)
-	for i, e := range env {
-		if strings.HasPrefix(e, "Path=") || strings.HasPrefix(e, "PATH=") {
-			env[i] = e[:5] + binDir + string(os.PathListSeparator) + e[5:]
-			break
-		}
-	}
-	for k, v := range p.ExtraEnv {
-		env = append(env, k+"="+v)
-	}
-	cmd.Env = env
+	cmd.Dir = filepath.Dir(exe)
+	cmd.Env = serverEnv(inst, p)
 	return cmd
 }
 

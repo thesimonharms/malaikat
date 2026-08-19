@@ -12,13 +12,13 @@ import (
 )
 
 const (
-	AppName         = "malaikat"
-	DefaultHost     = "127.0.0.1"
-	DefaultPort     = 8080
-	DefaultCtxSize  = 0 // 0 = model's trained context (largest available)
-	DefaultBatch    = 512
-	DefaultUBatch   = 512
-	DefaultNGL      = 999
+	AppName          = "malaikat"
+	DefaultHost      = "127.0.0.1"
+	DefaultPort      = 8080
+	DefaultCtxSize   = 0 // 0 = model's trained context (largest available)
+	DefaultBatch     = 512
+	DefaultUBatch    = 512
+	DefaultNGL       = 999
 	DefaultSpecType  = "draft-mtp"
 	DefaultDraftMax  = 3
 	DefaultFlashAttn = "on"
@@ -43,7 +43,6 @@ type Config struct {
 	Parallel      int               `json:"parallel" yaml:"parallel"`
 	SpecType      string            `json:"spec_type" yaml:"spec_type"`
 	SpecDraftNMax int               `json:"spec_draft_n_max" yaml:"spec_draft_n_max"`
-	HighPriority  bool              `json:"high_priority" yaml:"high_priority"`
 	ExtraArgs     []string          `json:"extra_args" yaml:"extra_args"`
 	Env           map[string]string `json:"env" yaml:"env"`
 	LlamaDir      string            `json:"llama_dir,omitempty" yaml:"llama_dir,omitempty"`
@@ -66,7 +65,6 @@ func Default() Config {
 		Parallel:      1,
 		SpecType:      DefaultSpecType,
 		SpecDraftNMax: DefaultDraftMax,
-		HighPriority:  true,
 		Env:           map[string]string{},
 	}
 }
@@ -105,6 +103,40 @@ func RuntimeDir() (string, error) {
 		return "", err
 	}
 	return dir, nil
+}
+
+// ModelsDir is the default model storage directory (XDG data home).
+func ModelsDir() (string, error) {
+	base := os.Getenv("XDG_DATA_HOME")
+	if base == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		base = filepath.Join(home, ".local", "share")
+	}
+	dir := filepath.Join(base, AppName, "models")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", err
+	}
+	return dir, nil
+}
+
+// ExpandPath expands environment variables and a leading "~/" in p.
+func ExpandPath(p string) string {
+	p = os.ExpandEnv(p)
+	if p == "~" {
+		if home, err := os.UserHomeDir(); err == nil {
+			return home
+		}
+		return p
+	}
+	if strings.HasPrefix(p, "~/") {
+		if home, err := os.UserHomeDir(); err == nil {
+			return filepath.Join(home, p[2:])
+		}
+	}
+	return p
 }
 
 // LoadFile reads JSON or YAML. Empty path returns defaults.

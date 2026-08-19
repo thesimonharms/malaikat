@@ -113,13 +113,45 @@ func resolveBins(inst *Install) error {
 		return found
 	}
 
-	inst.ServerExe = find("llama-server.exe", "llama-server")
-	inst.CLIExe = find("llama-cli.exe", "llama-cli")
-	inst.BenchExe = find("llama-bench.exe", "llama-bench")
+	inst.ServerExe = find("llama-server")
+	inst.CLIExe = find("llama-cli")
+	inst.BenchExe = find("llama-bench")
 	if inst.ServerExe == "" {
 		return fmt.Errorf("llama-server not found under %s", inst.Dir)
 	}
-	// Prefer the directory that contains the server (ROCm DLLs live beside it).
+	// Prefer the directory that contains the server (ROCm libs live beside it).
 	inst.Dir = filepath.Dir(inst.ServerExe)
+	// Zip archives do not reliably preserve the executable bit.
+	for _, exe := range []string{inst.ServerExe, inst.CLIExe, inst.BenchExe} {
+		if exe == "" {
+			continue
+		}
+		if st, err := os.Stat(exe); err == nil && st.Mode()&0o111 == 0 {
+			_ = os.Chmod(exe, st.Mode()|0o755)
+		}
+	}
 	return nil
+}
+
+// LibDirs returns the directories holding the bundled ROCm shared libraries,
+// for LD_LIBRARY_PATH: the server binary dir plus lib/ and ../lib when present.
+func (inst Install) LibDirs() []string {
+	binDir := filepath.Dir(inst.ServerExe)
+	seen := map[string]bool{binDir: true}
+	dirs := []string{binDir}
+	for _, cand := range []string{
+		filepath.Join(binDir, "lib"),
+		filepath.Join(binDir, "..", "lib"),
+		filepath.Join(binDir, "..", "lib64"),
+	} {
+		cand = filepath.Clean(cand)
+		if seen[cand] {
+			continue
+		}
+		if st, err := os.Stat(cand); err == nil && st.IsDir() {
+			seen[cand] = true
+			dirs = append(dirs, cand)
+		}
+	}
+	return dirs
 }
