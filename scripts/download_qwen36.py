@@ -1,8 +1,12 @@
 import os
+import sys
 
 from huggingface_hub import hf_hub_download
 
-base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
+if sys.platform == "win32":
+    base = os.environ.get("LOCALAPPDATA") or os.path.expanduser("~")
+else:
+    base = os.environ.get("XDG_DATA_HOME") or os.path.join(os.path.expanduser("~"), ".local", "share")
 dest = os.path.join(base, "malaikat", "models", "Qwen3.6-35B-A3B-MTP")
 os.makedirs(dest, exist_ok=True)
 print("dest=", dest, flush=True)

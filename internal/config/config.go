@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"gopkg.in/yaml.v3"
@@ -45,6 +46,7 @@ type Config struct {
 	SpecDraftNMax int               `json:"spec_draft_n_max" yaml:"spec_draft_n_max"`
 	ExtraArgs     []string          `json:"extra_args" yaml:"extra_args"`
 	Env           map[string]string `json:"env" yaml:"env"`
+	HighPriority  bool              `json:"high_priority" yaml:"high_priority"`
 	LlamaDir      string            `json:"llama_dir,omitempty" yaml:"llama_dir,omitempty"`
 	LlamaTag      string            `json:"llama_tag,omitempty" yaml:"llama_tag,omitempty"`
 }
@@ -65,6 +67,7 @@ func Default() Config {
 		Parallel:      1,
 		SpecType:      DefaultSpecType,
 		SpecDraftNMax: DefaultDraftMax,
+		HighPriority:  runtime.GOOS == "windows",
 		Env:           map[string]string{},
 	}
 }
@@ -105,15 +108,26 @@ func RuntimeDir() (string, error) {
 	return dir, nil
 }
 
-// ModelsDir is the default model storage directory (XDG data home).
+// ModelsDir is the default model storage directory.
+// Windows: %LOCALAPPDATA%\malaikat\models
+// Linux: $XDG_DATA_HOME/malaikat/models or ~/.local/share/malaikat/models
 func ModelsDir() (string, error) {
-	base := os.Getenv("XDG_DATA_HOME")
-	if base == "" {
-		home, err := os.UserHomeDir()
+	var base string
+	if runtime.GOOS == "windows" {
+		var err error
+		base, err = os.UserCacheDir() // %LOCALAPPDATA%
 		if err != nil {
 			return "", err
 		}
-		base = filepath.Join(home, ".local", "share")
+	} else {
+		base = os.Getenv("XDG_DATA_HOME")
+		if base == "" {
+			home, err := os.UserHomeDir()
+			if err != nil {
+				return "", err
+			}
+			base = filepath.Join(home, ".local", "share")
+		}
 	}
 	dir := filepath.Join(base, AppName, "models")
 	if err := os.MkdirAll(dir, 0o755); err != nil {

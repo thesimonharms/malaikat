@@ -8,14 +8,27 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
 
+func rocmAssetNeedle() string {
+	if runtime.GOOS == "windows" {
+		return "windows-rocm-gfx1151-x64.zip"
+	}
+	return "ubuntu-rocm-gfx1151-x64.zip"
+}
+
+func rocmUserAgent() string {
+	if runtime.GOOS == "windows" {
+		return "malaikat/0.2 (AMD Strix Halo; Windows ROCm)"
+	}
+	return "malaikat/0.2 (AMD Strix Halo; Linux ROCm)"
+}
+
 const (
-	githubAPI   = "https://api.github.com/repos/lemonade-sdk/llamacpp-rocm/releases/latest"
-	assetNeedle = "ubuntu-rocm-gfx1151-x64.zip"
-	userAgent   = "malaikat/0.2 (AMD Strix Halo; Linux ROCm)"
+	githubAPI = "https://api.github.com/repos/lemonade-sdk/llamacpp-rocm/releases/latest"
 )
 
 type ghRelease struct {
@@ -149,7 +162,7 @@ func latestRelease() (ghRelease, error) {
 	if err != nil {
 		return ghRelease{}, err
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", rocmUserAgent())
 	req.Header.Set("Accept", "application/vnd.github+json")
 
 	client := &http.Client{Timeout: 60 * time.Second}
@@ -173,13 +186,14 @@ func latestRelease() (ghRelease, error) {
 }
 
 func findROCmAsset(rel ghRelease) (url, name string, err error) {
+	needle := rocmAssetNeedle()
 	for _, a := range rel.Assets {
 		n := strings.ToLower(a.Name)
-		if strings.Contains(n, assetNeedle) {
+		if strings.Contains(n, needle) {
 			return a.BrowserDownloadURL, a.Name, nil
 		}
 	}
-	return "", "", fmt.Errorf("no %s asset in release %s", assetNeedle, rel.TagName)
+	return "", "", fmt.Errorf("no %s asset in release %s", needle, rel.TagName)
 }
 
 func downloadFile(url, dest string) error {
@@ -187,7 +201,7 @@ func downloadFile(url, dest string) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("User-Agent", rocmUserAgent())
 	client := &http.Client{Timeout: 0}
 	resp, err := client.Do(req)
 	if err != nil {

@@ -1,10 +1,8 @@
-# Example config for malaikat serve (MTP on Strix Halo native ROCm, Linux).
-# Copy and set model to your GGUF path — models are not bundled.
-# "~" and $ENV vars in the model path are expanded.
-# ctx_size 0 = the GGUF's trained context (Qwen3.6 = 262144). Do not set a
-# smaller -c; malaikat also passes --fit off so llama.cpp cannot shrink it.
+# Example config for malaikat serve (MTP on Strix Halo ROCm).
+# Model path is relative to the platform models dir unless absolute.
+# "~" and $ENV vars are expanded. OS-specific env/args are applied by malaikat.
 
-model: ~/.local/share/malaikat/models/Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+model: Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
 alias: qwen3.6-35b-a3b-mtp
 host: 127.0.0.1
 port: 8080
@@ -24,5 +22,3 @@ spec_draft_n_max: 3
 
 env:
   HIP_VISIBLE_DEVICES: "0"
-  ROCR_VISIBLE_DEVICES: "0"
-  ROCBLAS_USE_HIPBLASLT: "1"

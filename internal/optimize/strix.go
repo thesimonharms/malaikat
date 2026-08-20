@@ -22,6 +22,8 @@ type Profile struct {
 	Parallel      int
 	SpecType      string
 	SpecDraftNMax int
+	HighPriority  bool
+	FitOff        bool
 	ExtraArgs     []string
 	ExtraEnv      map[string]string
 }
@@ -43,6 +45,7 @@ func FromConfig(cfg config.Config) Profile {
 		Parallel:      cfg.Parallel,
 		SpecType:      cfg.SpecType,
 		SpecDraftNMax: cfg.SpecDraftNMax,
+		HighPriority:  cfg.HighPriority,
 		ExtraArgs:     append([]string{}, cfg.ExtraArgs...),
 		ExtraEnv:      map[string]string{},
 	}
@@ -76,11 +79,15 @@ func FromConfig(cfg config.Config) Profile {
 		}
 	}
 
-	// Pin the Strix Halo iGPU for both the HIP and ROCr runtimes.
+	// Pin the Strix Halo iGPU. Linux also pins ROCr and routes GEMMs through
+	// hipBLASLt; Windows lemonade already ships that stack and uses process
+	// high-priority instead.
 	p.ExtraEnv["HIP_VISIBLE_DEVICES"] = "0"
-	p.ExtraEnv["ROCR_VISIBLE_DEVICES"] = "0"
-	// ROCm 7.2 hipBLASLt has tuned gfx1151 GEMMs; biggest PP win on this APU.
-	p.ExtraEnv["ROCBLAS_USE_HIPBLASLT"] = "1"
+	if runtime.GOOS == "linux" {
+		p.ExtraEnv["ROCR_VISIBLE_DEVICES"] = "0"
+		p.ExtraEnv["ROCBLAS_USE_HIPBLASLT"] = "1"
+		p.FitOff = true
+	}
 	for k, v := range cfg.Env {
 		p.ExtraEnv[k] = v
 	}

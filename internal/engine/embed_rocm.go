@@ -11,7 +11,7 @@ import (
 	"strings"
 )
 
-// Bundled lemonade-sdk Ubuntu gfx1151 ROCm zip (downloaded at release build time).
+// Bundled lemonade-sdk gfx1151 ROCm zip for the build OS (not the model).
 //
 //go:embed embedded/runtime.zip
 var embeddedROCmFS embed.FS

@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
@@ -67,9 +68,9 @@ func BuildServerArgs(o ServerOpts) []string {
 			args = append(args, "--spec-draft-n-max", strconv.Itoa(p.SpecDraftNMax))
 		}
 	}
-	// llama.cpp --fit on (default) treats -c 0 as unset and silently
-	// shrinks the trained context to leave a 1GiB device margin.
-	if !hasArg(p.ExtraArgs, "--fit") && !hasArg(o.Extra, "--fit") {
+	// Linux source llama.cpp --fit on treats -c 0 as unset and shrinks ctx.
+	// Windows lemonade builds do not take this flag.
+	if p.FitOff && !hasArg(p.ExtraArgs, "--fit") && !hasArg(o.Extra, "--fit") {
 		args = append(args, "--fit", "off")
 	}
 	args = append(args, p.ExtraArgs...)
@@ -130,28 +131,67 @@ func setEnv(env []string, key, val string) []string {
 	return append(env, prefix+val)
 }
 
-// serverEnv builds the child environment: bundled ROCm shared libraries on
-// LD_LIBRARY_PATH, runtime binaries on PATH, plus profile env overrides.
+// prependPath prepends val to PATH (or Path on Windows).
+func prependPath(env []string, val string) []string {
+	if val == "" {
+		return env
+	}
+	for i, e := range env {
+		eq := strings.IndexByte(e, '=')
+		if eq <= 0 {
+			continue
+		}
+		if strings.EqualFold(e[:eq], "PATH") {
+			env[i] = e[:eq+1] + val + string(os.PathListSeparator) + e[eq+1:]
+			return env
+		}
+	}
+	return append(env, "PATH="+val)
+}
+
+// serverEnv builds the child environment for the ROCm runtime.
+// Windows: PATH/DLL search next to llama-server.
+// Linux: LD_LIBRARY_PATH plus PATH.
 func serverEnv(inst Install, p optimize.Profile) []string {
 	env := os.Environ()
-	for _, d := range inst.LibDirs() {
-		env = prependEnv(env, "LD_LIBRARY_PATH", d)
+	binDir := filepath.Dir(inst.ServerExe)
+	if runtime.GOOS == "windows" {
+		workDir := inst.Dir
+		if workDir == "" {
+			workDir = binDir
+		}
+		pathPrepend := binDir
+		if workDir != binDir {
+			pathPrepend = workDir + string(os.PathListSeparator) + binDir
+		}
+		env = prependPath(env, pathPrepend)
+	} else {
+		for _, d := range inst.LibDirs() {
+			env = prependEnv(env, "LD_LIBRARY_PATH", d)
+		}
+		env = prependPath(env, binDir)
 	}
-	env = prependEnv(env, "PATH", filepath.Dir(inst.ServerExe))
 	for k, v := range p.ExtraEnv {
 		env = setEnv(env, k, v)
 	}
 	return env
 }
 
-// Command prepares an exec.Cmd with the bundled ROCm runtime on the library path.
+// Command prepares an exec.Cmd with the ROCm runtime on the library path.
 func Command(inst Install, args []string, p optimize.Profile) *exec.Cmd {
 	cmd := exec.Command(inst.ServerExe, args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	cmd.Dir = filepath.Dir(inst.ServerExe)
+	workDir := inst.Dir
+	if workDir == "" {
+		workDir = filepath.Dir(inst.ServerExe)
+	}
+	cmd.Dir = workDir
 	cmd.Env = serverEnv(inst, p)
+	if p.HighPriority {
+		setHighPriority(cmd)
+	}
 	return cmd
 }
 

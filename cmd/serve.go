@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -100,6 +101,7 @@ func runServe(args []string) error {
 	argv := engine.BuildServerArgs(opts)
 
 	fmt.Println("malaikat serve")
+	fmt.Println("platform:", runtime.GOOS)
 	fmt.Println("settings:", source)
 	fmt.Println("runtime:", inst.Tag, "("+inst.Backend+")")
 	fmt.Println("model:  ", modelPath)

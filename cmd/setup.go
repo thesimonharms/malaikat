@@ -3,6 +3,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"runtime"
 
 	"github.com/simon/malaikat/internal/config"
 	"github.com/simon/malaikat/internal/engine"
@@ -12,7 +13,7 @@ func runSetup(args []string) error {
 	fs := newFlagSet("setup")
 	force := fs.Bool("force", false, "re-build / re-download even if current")
 	bundle := fs.Bool("bundle", false, "use prebuilt lemonade-sdk ROCm bundle instead of building from source")
-	source := fs.Bool("source", false, "build llama.cpp from source against system ROCm (default)")
+	source := fs.Bool("source", false, "build llama.cpp from source against system ROCm (Linux default)")
 	ref := fs.String("ref", "", "llama.cpp tag/branch to build, e.g. b1311 (source only)")
 	if err := fs.Parse(args); err != nil {
 		return err
@@ -24,9 +25,13 @@ func runSetup(args []string) error {
 		return fmt.Errorf("--ref only applies to --source builds")
 	}
 
-	// Default: build from source against the system ROCm. All-in-one
-	// (embedded runtime) builds default to extracting the bundle instead.
-	useSource := *source || (!*bundle && !engine.HasEmbeddedROCm())
+	// Default runtime: Windows uses the lemonade zip (original Windows
+	// settings). Linux builds llama.cpp against system ROCm. All-in-one
+	// (embedded runtime) builds extract the bundle instead.
+	useSource := *source
+	if !*bundle && !*source && !engine.HasEmbeddedROCm() {
+		useSource = runtime.GOOS != "windows"
+	}
 
 	var (
 		inst engine.Install
@@ -36,10 +41,10 @@ func runSetup(args []string) error {
 		fmt.Println("Building llama.cpp from source against system ROCm (HIP gfx1151)...")
 		inst, err = engine.EnsureSource(*force, *ref)
 	} else if engine.HasEmbeddedROCm() {
-		fmt.Println("Installing bundled lemonade-sdk llamacpp-rocm Ubuntu gfx1151 build...")
+		fmt.Printf("Installing bundled lemonade-sdk llamacpp-rocm %s gfx1151 build...\n", runtime.GOOS)
 		inst, err = engine.EnsureROCm(*force)
 	} else {
-		fmt.Println("Installing lemonade-sdk llamacpp-rocm Ubuntu gfx1151 bundle...")
+		fmt.Printf("Installing lemonade-sdk llamacpp-rocm %s gfx1151 bundle...\n", runtime.GOOS)
 		inst, err = engine.EnsureROCm(*force)
 	}
 	if err != nil {

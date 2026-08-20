@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/simon/malaikat/internal/config"
@@ -113,21 +114,22 @@ func resolveBins(inst *Install) error {
 		return found
 	}
 
-	inst.ServerExe = find("llama-server")
-	inst.CLIExe = find("llama-cli")
-	inst.BenchExe = find("llama-bench")
+	inst.ServerExe = find("llama-server.exe", "llama-server")
+	inst.CLIExe = find("llama-cli.exe", "llama-cli")
+	inst.BenchExe = find("llama-bench.exe", "llama-bench")
 	if inst.ServerExe == "" {
 		return fmt.Errorf("llama-server not found under %s", inst.Dir)
 	}
-	// Prefer the directory that contains the server (ROCm libs live beside it).
+	// Prefer the directory that contains the server (ROCm libs/DLLs live beside it).
 	inst.Dir = filepath.Dir(inst.ServerExe)
-	// Zip archives do not reliably preserve the executable bit.
-	for _, exe := range []string{inst.ServerExe, inst.CLIExe, inst.BenchExe} {
-		if exe == "" {
-			continue
-		}
-		if st, err := os.Stat(exe); err == nil && st.Mode()&0o111 == 0 {
-			_ = os.Chmod(exe, st.Mode()|0o755)
+	if runtime.GOOS != "windows" {
+		for _, exe := range []string{inst.ServerExe, inst.CLIExe, inst.BenchExe} {
+			if exe == "" {
+				continue
+			}
+			if st, err := os.Stat(exe); err == nil && st.Mode()&0o111 == 0 {
+				_ = os.Chmod(exe, st.Mode()|0o755)
+			}
 		}
 	}
 	return nil

@@ -1,6 +1,6 @@
 # Same as coding.yaml — Qwen3.6-35B-A3B MTP MoE, full 256k context.
 
-model: ~/.local/share/malaikat/models/Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+model: Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
 alias: qwen3.6-35b-a3b-mtp
 host: 127.0.0.1
 port: 8080
@@ -20,5 +20,3 @@ spec_draft_n_max: 3
 
 env:
   HIP_VISIBLE_DEVICES: "0"
-  ROCR_VISIBLE_DEVICES: "0"
-  ROCBLAS_USE_HIPBLASLT: "1"

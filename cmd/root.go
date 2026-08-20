@@ -4,6 +4,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/simon/malaikat/internal/config"
@@ -105,10 +107,19 @@ func requireModel(cfg config.Config) (string, error) {
 	if m == "" {
 		return "", fmt.Errorf("model required: run with -m / -config once, or set model in %s", mustLastPath())
 	}
-	if _, err := os.Stat(m); err != nil {
-		return "", fmt.Errorf("model not found: %s", m)
+	if _, err := os.Stat(m); err == nil {
+		return m, nil
 	}
-	return m, nil
+	if !filepath.IsAbs(m) {
+		if dir, err := config.ModelsDir(); err == nil {
+			joined := filepath.Join(dir, filepath.FromSlash(m))
+			if _, err := os.Stat(joined); err == nil {
+				return joined, nil
+			}
+			m = joined
+		}
+	}
+	return "", fmt.Errorf("model not found: %s", m)
 }
 
 func mustLastPath() string {
@@ -118,6 +129,9 @@ func mustLastPath() string {
 func lastPathHint() string {
 	if p, err := config.LastPath(); err == nil {
 		return p
+	}
+	if runtime.GOOS == "windows" {
+		return `%AppData%\malaikat\last.yaml`
 	}
 	return "~/.config/malaikat/last.yaml"
 }
