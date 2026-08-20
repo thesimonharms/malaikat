@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -22,7 +23,7 @@ func runServe(args []string) error {
 	alias := fs.String("alias", "", "API model id alias")
 	host := fs.String("host", "", "bind host")
 	port := fs.Int("port", 0, "bind port")
-	ctxSize := fs.Int("c", -1, "context size (0 = model max; -1 = config)")
+	ctxSize := fs.String("c", "", "context size: 256k, 512k, 1m (0 = model max)")
 	ngl := fs.Int("ngl", -1, "GPU layers")
 	batch := fs.Int("b", 0, "batch size")
 	ubatch := fs.Int("ub", 0, "ubatch size")
@@ -35,6 +36,16 @@ func runServe(args []string) error {
 		return err
 	}
 
+	var ctxOverride *config.CtxSize
+	if strings.TrimSpace(*ctxSize) != "" {
+		n, err := config.ParseCtxSize(*ctxSize)
+		if err != nil {
+			return err
+		}
+		v := config.CtxSize(n)
+		ctxOverride = &v
+	}
+
 	cfg, source, err := loadServeConfig(*configPath, *model, func(c *config.Config) {
 		if *host != "" {
 			c.Host = *host
@@ -45,8 +56,8 @@ func runServe(args []string) error {
 		if *alias != "" {
 			c.Alias = *alias
 		}
-		if *ctxSize >= 0 {
-			c.CtxSize = *ctxSize
+		if ctxOverride != nil {
+			c.CtxSize = *ctxOverride
 		}
 		if *ngl >= 0 {
 			c.NGL = *ngl
@@ -105,6 +116,10 @@ func runServe(args []string) error {
 	fmt.Println("settings:", source)
 	fmt.Println("runtime:", inst.Tag, "("+inst.Backend+")")
 	fmt.Println("model:  ", modelPath)
+	fmt.Println("context:", config.FormatCtxSize(profile.CtxSize))
+	if profile.YarnScale > 1 {
+		fmt.Printf("yarn:    %.4gx from %d (--rope-scaling yarn)\n", profile.YarnScale, profile.YarnOrigCtx)
+	}
 	fmt.Println("listen: ", opts.BaseURL())
 	fmt.Println("argv:   ", engine.FormatArgs(inst.ServerExe, argv))
 	fmt.Println()

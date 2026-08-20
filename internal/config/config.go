@@ -17,6 +17,8 @@ const (
 	DefaultHost      = "127.0.0.1"
 	DefaultPort      = 8080
 	DefaultCtxSize   = 0 // 0 = model's trained context (largest available)
+	DefaultNativeCtx = NativeCtxQwen35
+	DefaultRopeArch  = "qwen35moe"
 	DefaultBatch     = 512
 	DefaultUBatch    = 512
 	DefaultNGL       = 999
@@ -32,7 +34,9 @@ type Config struct {
 	Alias         string            `json:"alias" yaml:"alias"`
 	Host          string            `json:"host" yaml:"host"`
 	Port          int               `json:"port" yaml:"port"`
-	CtxSize       int               `json:"ctx_size" yaml:"ctx_size"` // 0 = model max
+	CtxSize       CtxSize           `json:"ctx_size" yaml:"ctx_size"` // 0 = model max; also 256k/512k/1m
+	NativeCtx     int               `json:"native_ctx" yaml:"native_ctx"`
+	RopeArch      string            `json:"rope_arch" yaml:"rope_arch"` // GGUF KV prefix, e.g. qwen35moe
 	Batch         int               `json:"batch" yaml:"batch"`
 	UBatch        int               `json:"ubatch" yaml:"ubatch"`
 	NGL           int               `json:"n_gpu_layers" yaml:"n_gpu_layers"`
@@ -55,7 +59,9 @@ func Default() Config {
 	return Config{
 		Host:          DefaultHost,
 		Port:          DefaultPort,
-		CtxSize:       DefaultCtxSize,
+		CtxSize:       CtxSize(DefaultCtxSize),
+		NativeCtx:     DefaultNativeCtx,
+		RopeArch:      DefaultRopeArch,
 		Batch:         DefaultBatch,
 		UBatch:        DefaultUBatch,
 		NGL:           DefaultNGL,
@@ -194,6 +200,12 @@ func (c *Config) ApplyDefaults() {
 		c.Port = d.Port
 	}
 	// CtxSize 0 means "use model trained context" — do not replace.
+	if c.NativeCtx <= 0 {
+		c.NativeCtx = d.NativeCtx
+	}
+	if c.RopeArch == "" {
+		c.RopeArch = d.RopeArch
+	}
 	if c.Batch == 0 {
 		c.Batch = d.Batch
 	}

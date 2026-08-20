@@ -1,17 +1,26 @@
-# Unsloth Qwen3.6-35B-A3B MTP (MoE). Path is relative to the platform models dir:
+# Ornith-1.5-35B-A3B (MoE, ~3B active). Path is relative to the platform models dir:
 #   Windows: %LOCALAPPDATA%\malaikat\models
 #   Linux:   ~/.local/share/malaikat/models
-# ctx_size 0 = model max (262144). On Linux, malaikat passes --fit off so
-# llama.cpp cannot silently shrink that window. Windows lemonade is unchanged.
+#
+# Context on launch (CLI wins over this file):
+#   ./malaikat serve -config ./coding.yaml -c 256k
+#   ./malaikat serve -config ./coding.yaml -c 512k
+#   ./malaikat serve -config ./coding.yaml -c 1m
+#
+# 256k is native (262144). 512k and 1m turn on YaRN automatically
+# (--rope-scaling yarn + GGUF context_length override so llama.cpp does not cap).
+# On Linux, malaikat also passes --fit off so the window is not silently shrunk.
+#
+# Download: python3 scripts/download_ornith15.py
 # Shared knobs: MTP n-max=3 + FA on + KV q8_0 + 2048/1024 batch.
-# Linux also sets ROCR_VISIBLE_DEVICES=0 and ROCBLAS_USE_HIPBLASLT=1 at runtime.
-# Windows uses HIGH_PRIORITY_CLASS (high_priority default true).
 
-model: Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
-alias: qwen3.6-35b-a3b-mtp
+model: Ornith-1.5-35B-A3B/Ornith-1.5-35B-Q4_K_M.gguf
+alias: ornith-1.5-35b-a3b
 host: 127.0.0.1
 port: 8080
-ctx_size: 0
+ctx_size: 256k
+native_ctx: 262144
+rope_arch: qwen35moe
 batch: 2048
 ubatch: 1024
 n_gpu_layers: 999
