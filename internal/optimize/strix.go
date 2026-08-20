@@ -13,6 +13,10 @@ type Profile struct {
 	Batch         int
 	UBatch        int
 	CtxSize       int
+	NativeCtx     int
+	RopeArch      string
+	YarnScale     float64 // 0 = no YaRN; else target/native
+	YarnOrigCtx   int
 	Alias         string
 	Threads       int
 	FlashAttn     string // on|off|auto|""; empty omits flag
@@ -35,7 +39,9 @@ func FromConfig(cfg config.Config) Profile {
 		NGL:           cfg.NGL,
 		Batch:         cfg.Batch,
 		UBatch:        cfg.UBatch,
-		CtxSize:       cfg.CtxSize,
+		CtxSize:       cfg.CtxSize.Int(),
+		NativeCtx:     cfg.NativeCtx,
+		RopeArch:      cfg.RopeArch,
 		Alias:         cfg.Alias,
 		Threads:       cfg.Threads,
 		FlashAttn:     cfg.FlashAttn,
@@ -77,6 +83,18 @@ func FromConfig(cfg config.Config) Profile {
 		} else {
 			p.Threads = n
 		}
+	}
+	if p.NativeCtx <= 0 {
+		p.NativeCtx = config.DefaultNativeCtx
+	}
+	if p.RopeArch == "" {
+		p.RopeArch = config.DefaultRopeArch
+	}
+	// Extend past the trained window with YaRN. llama.cpp also caps n_ctx to
+	// the GGUF's declared context_length, so override that KV when scaling.
+	if p.CtxSize > p.NativeCtx {
+		p.YarnOrigCtx = p.NativeCtx
+		p.YarnScale = float64(p.CtxSize) / float64(p.NativeCtx)
 	}
 
 	// Pin the Strix Halo iGPU. Linux also pins ROCr and routes GEMMs through

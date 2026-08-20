@@ -1,10 +1,14 @@
-# Same as coding.yaml — Qwen3.6-35B-A3B MTP MoE, full 256k context.
+# Fallback: Unsloth Qwen3.6-35B-A3B MTP MoE, full 256k context.
+# Prefer coding.yaml (Ornith-1.5-35B-A3B) unless you want this checkpoint.
+# Same -c 256k|512k|1m switch works here.
 
 model: Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
 alias: qwen3.6-35b-a3b-mtp
 host: 127.0.0.1
 port: 8080
 ctx_size: 0
+native_ctx: 262144
+rope_arch: qwen35moe
 batch: 2048
 ubatch: 1024
 n_gpu_layers: 999
