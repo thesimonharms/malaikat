@@ -1,6 +1,4 @@
-# Unsloth Qwen3.6-35B-A3B MTP (MoE) via malaikat ROCm (Linux).
-# Tuned knobs: MTP n-max=3 + FA on + KV q8_0.
-# batch/ubatch 2048/1024: better prompt tok/s on long coding prompts; tg unchanged.
+# Same as coding.yaml — Qwen3.6-35B-A3B MTP MoE, full 256k context.
 
 model: ~/.local/share/malaikat/models/Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
 alias: qwen3.6-35b-a3b-mtp
@@ -23,3 +21,4 @@ spec_draft_n_max: 3
 env:
   HIP_VISIBLE_DEVICES: "0"
   ROCR_VISIBLE_DEVICES: "0"
+  ROCBLAS_USE_HIPBLASLT: "1"

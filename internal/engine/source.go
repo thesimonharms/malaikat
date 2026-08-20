@@ -133,10 +133,10 @@ func cmakeConfigure(srcDir, buildDir string) error {
 		"-DLLAMA_BUILD_TESTS=OFF",
 		"-DLLAMA_BUILD_EXAMPLES=OFF",
 	}
-	if _, err := os.Stat(filepath.Join(rocmRoot(), "include", "rocwmma", "rocwmma.hpp")); err == nil {
-		// RDNA3.5-optimized flash-attention kernels.
-		args = append(args, "-DGGML_HIP_ROCWMMA_FATTN=ON")
-	}
+	// Current llama.cpp flash-attn on gfx1151 uses HIP WMMA builtins
+	// (AMD_WMMA_AVAILABLE), not the rocWMMA library. GGML_HIP_ROCWMMA_FATTN
+	// was removed upstream; enabling it used to regress long-context PP on
+	// Strix Halo (ggml-org/llama.cpp#24437).
 	fmt.Println("cmake", strings.Join(args, " "))
 	return run("cmake", args...)
 }

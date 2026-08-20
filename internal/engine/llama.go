@@ -67,9 +67,23 @@ func BuildServerArgs(o ServerOpts) []string {
 			args = append(args, "--spec-draft-n-max", strconv.Itoa(p.SpecDraftNMax))
 		}
 	}
+	// llama.cpp --fit on (default) treats -c 0 as unset and silently
+	// shrinks the trained context to leave a 1GiB device margin.
+	if !hasArg(p.ExtraArgs, "--fit") && !hasArg(o.Extra, "--fit") {
+		args = append(args, "--fit", "off")
+	}
 	args = append(args, p.ExtraArgs...)
 	args = append(args, o.Extra...)
 	return args
+}
+
+func hasArg(args []string, flag string) bool {
+	for _, a := range args {
+		if a == flag {
+			return true
+		}
+	}
+	return false
 }
 
 // BuildBenchArgs returns args for llama-bench (no MTP; measures base kernels).

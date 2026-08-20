@@ -15,7 +15,7 @@ go build -o malaikat .
 ./malaikat setup
 ```
 
-`setup` clones [llama.cpp](https://github.com/ggml-org/llama.cpp) into `~/.cache/malaikat/llama.cpp-src` and builds it natively against the system ROCm (`-DGGML_HIP=ON -DAMDGPU_TARGETS=gfx1151`, plus the rocWMMA flash-attention kernels when the `rocwmma` headers are installed). No bundled runtime, no container, links straight against `/opt/rocm`.
+`setup` clones [llama.cpp](https://github.com/ggml-org/llama.cpp) into `~/.cache/malaikat/llama.cpp-src` and builds it natively against the system ROCm (`-DGGML_HIP=ON -DAMDGPU_TARGETS=gfx1151`). Flash-attn uses HIP WMMA builtins on gfx1151. Serve sets `ROCBLAS_USE_HIPBLASLT=1` so rocBLAS uses hipBLASLt's tuned gfx1151 GEMMs. No bundled runtime, no container, links straight against `/opt/rocm`.
 
 Useful variants:
 
@@ -52,7 +52,9 @@ Last settings are stored at `~/.config/malaikat/last.yaml`. Use `-no-save` to sk
 ./malaikat serve -m ./model.gguf -- --cache-type-k q8_0
 ```
 
-Model paths may use `~` and `$ENV` vars. Default model dir: `~/.local/share/malaikat/models` (see `scripts/download_qwen38_27b.py`).
+Model paths may use `~` and `$ENV` vars. Default model dir: `~/.local/share/malaikat/models` (see `scripts/download_qwen36.py`).
+
+`serve` always passes `--fit off` (unless you override it after `--`) so llama.cpp cannot silently shrink `ctx_size: 0` (model max, 262144 for Qwen3.6) to leave a device-memory margin.
 
 API: `http://127.0.0.1:8080/v1`
 
@@ -72,7 +74,15 @@ Disable MTP: `-no-mtp`. Draft depth: `-spec-draft-n-max N`.
 
 Optional kernel microbench: `bench -kernel -m path/to/model.gguf`.
 
-Throughput numbers on Linux differ from the old Windows runs — re-sweep after runtime upgrades with `scripts/sweep-speed.sh`.
+Measured on this machine (Linux, llama.cpp built against system ROCm HIP gfx1151, Qwen3.6-35B-A3B MTP UD-Q4_K_XL, **ctx 262144**):
+
+| Path | tok/s |
+|------|------:|
+| malaikat MTP n=3 + FA on + KV q8 + 2048/1024 | ~79 tg (short), ~830 pp @ 6.4k |
+| malaikat MTP n=2 | ~71 tg |
+| malaikat no MTP | ~40 tg |
+
+Use `scripts/sweep-speed.sh` to re-sweep after runtime upgrades.
 
 ## Config
 

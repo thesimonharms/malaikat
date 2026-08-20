@@ -1,10 +1,13 @@
-# Unsloth Qwen3.8-27B MTP (dense hybrid qwen35) via malaikat ROCm (Linux).
-# UD-Q4_K_XL Dynamic V3.0 — recommended 4-bit; native MTP head (no separate drafter).
-# Strix Halo knobs: MTP n-max=3 + FA on + KV q8_0 + 2048/1024 batch.
-# Switch back: malaikat serve -config coding-qwen36.yaml
+# Unsloth Qwen3.6-35B-A3B MTP (MoE) via native Linux ROCm (HIP gfx1151).
+# UD-Q4_K_XL — 4-bit MoE + native MTP head (no separate drafter).
+# ctx_size 0 = model max (262144). malaikat passes --fit off so llama.cpp
+# cannot silently shrink that window to leave a device-memory margin.
+# Linux sweep (Strix Halo, source HIP gfx1151): MTP n-max=3 + FA on + KV q8_0
+# + 2048/1024 was the winner (~79 tok/s short, ~830 prompt tok/s at 6k tokens).
+# FA cannot be off with q8_0 V cache. n=2/4/5 and HSA_ENABLE_SDMA=0 were slower.
 
-model: ~/.local/share/malaikat/models/Qwen3.8-27B-MTP/Qwen3.8-27B-UD-Q4_K_XL.gguf
-alias: qwen3.8-27b-mtp
+model: ~/.local/share/malaikat/models/Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
+alias: qwen3.6-35b-a3b-mtp
 host: 127.0.0.1
 port: 8080
 ctx_size: 0
@@ -24,3 +27,4 @@ spec_draft_n_max: 3
 env:
   HIP_VISIBLE_DEVICES: "0"
   ROCR_VISIBLE_DEVICES: "0"
+  ROCBLAS_USE_HIPBLASLT: "1"

@@ -84,7 +84,7 @@ func runServe(args []string) error {
 	}
 	cfg.ModelPath = modelPath
 
-	inst, err := engine.EnsureROCm(false)
+	inst, err := engine.Current()
 	if err != nil {
 		return err
 	}
@@ -94,7 +94,8 @@ func runServe(args []string) error {
 		Host:    cfg.Host,
 		Port:    cfg.Port,
 		Profile: profile,
-		Extra:   passthrough,
+		// Passthrough is already on the profile as ExtraArgs when present.
+		Extra: nil,
 	}
 	argv := engine.BuildServerArgs(opts)
 

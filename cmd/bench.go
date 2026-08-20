@@ -51,7 +51,7 @@ func runBench(args []string) error {
 		if err != nil {
 			return err
 		}
-		inst, err := engine.EnsureROCm(false)
+		inst, err := engine.Current()
 		if err != nil {
 			return err
 		}

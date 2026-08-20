@@ -37,7 +37,7 @@ func EnsureROCm(force bool) (Install, error) {
 	}
 
 	current, _ := ReadManifest(dir)
-	if !force && current.Backend == "rocm" && exeExists(current) {
+	if !force && exeExists(current) && (current.Backend == "rocm" || current.Backend == "source") {
 		return current, nil
 	}
 

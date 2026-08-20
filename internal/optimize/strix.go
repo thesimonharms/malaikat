@@ -79,6 +79,8 @@ func FromConfig(cfg config.Config) Profile {
 	// Pin the Strix Halo iGPU for both the HIP and ROCr runtimes.
 	p.ExtraEnv["HIP_VISIBLE_DEVICES"] = "0"
 	p.ExtraEnv["ROCR_VISIBLE_DEVICES"] = "0"
+	// ROCm 7.2 hipBLASLt has tuned gfx1151 GEMMs; biggest PP win on this APU.
+	p.ExtraEnv["ROCBLAS_USE_HIPBLASLT"] = "1"
 	for k, v := range cfg.Env {
 		p.ExtraEnv[k] = v
 	}
