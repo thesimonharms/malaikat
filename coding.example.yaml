@@ -1,12 +1,19 @@
 # Example config for malaikat serve (MTP on Strix Halo ROCm).
 # Model path is relative to the platform models dir unless absolute.
 # "~" and $ENV vars are expanded. OS-specific env/args are applied by malaikat.
+#
+# Switch context at launch without editing this file:
+#   malaikat serve -config ./coding.yaml -c 256k
+#   malaikat serve -config ./coding.yaml -c 512k
+#   malaikat serve -config ./coding.yaml -c 1m
 
-model: Qwen3.6-35B-A3B-MTP/Qwen3.6-35B-A3B-UD-Q4_K_XL.gguf
-alias: qwen3.6-35b-a3b-mtp
+model: Ornith-1.5-35B-A3B/Ornith-1.5-35B-Q4_K_M.gguf
+alias: ornith-1.5-35b-a3b
 host: 127.0.0.1
 port: 8080
-ctx_size: 0
+ctx_size: 256k
+native_ctx: 262144
+rope_arch: qwen35moe
 batch: 2048
 ubatch: 1024
 n_gpu_layers: 999

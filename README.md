@@ -4,7 +4,7 @@ Personal **AMD Strix Halo** coding inference launcher: **ROCm llama.cpp + MoE + 
 
 No chat UI. No model store. Config file or CLI → OpenAI-compatible API.
 
-> Prefer **MoE MTP** GGUFs (e.g. Qwen3.6-35B-A3B-MTP). Dense models are bandwidth-bound on this APU.
+> Prefer **MoE MTP** GGUFs. Default is **Ornith-1.5-35B-A3B** (~3B active). Dense models are bandwidth-bound on this APU.
 
 `runtime.GOOS` selects the platform stack:
 
@@ -12,7 +12,7 @@ No chat UI. No model store. Config file or CLI → OpenAI-compatible API.
 |--|--|--|
 | Runtime | lemonade-sdk `windows-rocm-gfx1151` zip (PATH/DLLs) | llama.cpp built against system ROCm (`gfx1151`) |
 | Extra env | `HIP_VISIBLE_DEVICES=0`, high-priority process | `HIP_VISIBLE_DEVICES=0`, `ROCR_VISIBLE_DEVICES=0`, `ROCBLAS_USE_HIPBLASLT=1` |
-| Context | `-c 0` as lemonade shipped it | `-c 0` **and** `--fit off` so 256k is not shrunk |
+| Context | `-c 256k\|512k\|1m` (YaRN auto for 512k/1m) | same, **and** `--fit off` so the window is not shrunk |
 | Models | `%LOCALAPPDATA%\malaikat\models` | `~/.local/share/malaikat/models` |
 | last.yaml | `%AppData%\malaikat\last.yaml` | `~/.config/malaikat/last.yaml` |
 
@@ -59,19 +59,37 @@ chmod +x malaikat-0.2.0-linux-amd64
 ./malaikat-0.2.0-linux-amd64 serve -m path/to/moe-mtp.gguf
 ```
 
+Ornith-1.5-35B-A3B GGUF (~22 GB Q4_K_M):
+
+```bash
+python3 scripts/download_ornith15.py
+```
+
+Previous default, Unsloth Qwen3.6-35B-A3B MTP: `scripts/download_qwen36.py`.
+
 ## Serve
 
 ```bash
-# First time (or when changing models): pass a config / flags once
-./malaikat serve -config ./coding.yaml
+# First time: download, then pick a context at launch
+./malaikat serve -config ./coding.yaml -c 256k
+./malaikat serve -config ./coding.yaml -c 512k
+./malaikat serve -config ./coding.yaml -c 1m
 
 # After that, bare serve reloads the last successful settings:
 ./malaikat serve
 ```
 
-Model paths in YAML may be relative to the platform models dir, or use `~` / `$ENV`. See `scripts/download_qwen36.py`.
+| `-c` | Tokens | YaRN |
+|------|-------:|------|
+| `256k` (default in `coding.yaml`) | 262144 | off — native window |
+| `512k` | 524288 | 2× from 262144 |
+| `1m` | 1048576 | 4× from 262144 |
 
-On Linux, `serve` passes `--fit off` unless you override it after `--`, so llama.cpp cannot silently shrink `ctx_size: 0` (262144 for Qwen3.6). Windows lemonade is left as originally shipped.
+512k and 1m pass `--rope-scaling yarn --rope-scale N --yarn-orig-ctx 262144` and raise `qwen35moe.context_length` so llama.cpp does not cap the slot at 256k.
+
+Model paths in YAML may be relative to the platform models dir, or use `~` / `$ENV`. Fallback Qwen3.6 config: `coding-qwen36.yaml`.
+
+On Linux, `serve` passes `--fit off` unless you override it after `--`. Windows lemonade is left as originally shipped.
 
 API: `http://127.0.0.1:8080/v1`
 
@@ -83,7 +101,7 @@ Disable MTP: `-no-mtp`. Draft depth: `-spec-draft-n-max N`.
 
 ```bash
 # terminal A
-./malaikat serve -config ./coding.yaml
+./malaikat serve -config ./coding.yaml -c 256k
 
 # terminal B
 ./malaikat bench -url http://127.0.0.1:8080 -ollama qwen3.6:35b-a3b -n 128
@@ -105,7 +123,7 @@ Re-sweep: `scripts/sweep-speed.sh` (Linux) or `scripts/sweep-speed.ps1` (Windows
 
 ## Config
 
-JSON or YAML. See [`coding.example.yaml`](coding.example.yaml). CLI overrides the file.
+JSON or YAML. See [`coding.example.yaml`](coding.example.yaml). CLI overrides the file. `ctx_size` accepts `256k`, `512k`, `1m`, or a raw token count.
 
 ## Release build
 
