@@ -73,9 +73,38 @@ func BuildServerArgs(o ServerOpts) []string {
 	if p.FitOff && !hasArg(p.ExtraArgs, "--fit") && !hasArg(o.Extra, "--fit") {
 		args = append(args, "--fit", "off")
 	}
+	if p.YarnScale > 1 {
+		args = append(args,
+			"--rope-scaling", "yarn",
+			"--rope-scale", formatYarnScale(p.YarnScale),
+			"--yarn-orig-ctx", strconv.Itoa(p.YarnOrigCtx),
+		)
+		// llama.cpp caps slot n_ctx to the GGUF training length unless this KV
+		// is raised. MoE checkpoints use qwen35moe; dense siblings use qwen35.
+		// Passing both is ignored for the missing prefix.
+		seen := map[string]bool{}
+		for _, arch := range []string{p.RopeArch, "qwen35moe", "qwen35"} {
+			if arch == "" || seen[arch] {
+				continue
+			}
+			seen[arch] = true
+			args = append(args, "--override-kv",
+				fmt.Sprintf("%s.context_length=int:%d", arch, p.CtxSize))
+		}
+	}
 	args = append(args, p.ExtraArgs...)
 	args = append(args, o.Extra...)
 	return args
+}
+
+func formatYarnScale(scale float64) string {
+	s := strconv.FormatFloat(scale, 'f', 4, 64)
+	s = strings.TrimRight(s, "0")
+	s = strings.TrimRight(s, ".")
+	if s == "" || s == "-0" {
+		return "0"
+	}
+	return s
 }
 
 func hasArg(args []string, flag string) bool {

@@ -45,9 +45,14 @@ func printUsage() {
 Usage:
   malaikat setup [--force] [--bundle | --source] [--ref TAG]
   malaikat serve
-  malaikat serve [-config file] [-m model.gguf] [flags] [-- extra llama-server args]
+  malaikat serve [-config file] [-m model.gguf] [-c 256k|512k|1m] [flags] [-- extra llama-server args]
   malaikat bench [-config file] [-m model.gguf] [-url URL] [-ollama MODEL]
   malaikat version
+
+Context presets for Ornith-1.5-35B-A3B (and other Qwen3.5 256k MoEs):
+  -c 256k   native 262144 tokens (no YaRN)
+  -c 512k   524288, YaRN 2x
+  -c 1m     1048576, YaRN 4x
 
 Bare "malaikat serve" reloads the last successful settings from:
   %s
