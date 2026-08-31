@@ -36,3 +36,7 @@ spec_draft_n_max: 3
 
 env:
   HIP_VISIBLE_DEVICES: "0"
+  # ROCm tuning: more command queues + compute-path copies; small, stable
+  # decode/prefill speedup on Strix Halo gfx1151 (verified ~1-3% on ornith-1.5-35b-a3b).
+  GPU_MAX_HW_QUEUES: "16"
+  HSA_ENABLE_SDMA: "0"
